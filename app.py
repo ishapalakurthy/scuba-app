@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import sqlite3
 import pandas as pd
 import folium
@@ -104,6 +105,14 @@ SEARCHBOX_STYLES = {
 
 st.set_page_config(page_title="Scuba Dive Log", page_icon="🤿", layout="wide")
 st.markdown("""<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap');
+
+html, body, [data-testid="stAppViewContainer"], .stApp {
+    font-family: 'Inter', sans-serif !important;
+}
+h1, h2, h3, h4, .big-title {
+    font-family: 'Playfair Display', serif !important;
+}
 [data-testid="stAppViewContainer"] {
     background: linear-gradient(160deg, #020c1b 0%, #0a2540 60%, #0c3b5e 100%);
 }
@@ -128,11 +137,24 @@ h1,h2,h3,label,p,span,div { color: #e0f2fe !important; }
 .stat-lbl { font-size: .82rem; color: #93c5fd !important; }
 .stTabs [data-baseweb="tab"] { font-size: 1rem; color: #7dd3fc !important; }
 .stTabs [aria-selected="true"] { color: #00e5ff !important; border-bottom: 2px solid #00e5ff; }
-.stButton>button {
-    background: linear-gradient(90deg, #0ea5e9, #0284c7);
-    color: white !important; border: none; border-radius: 8px; font-weight: 600;
+:root [data-testid="baseButton-primary"] {
+    background: linear-gradient(90deg, #0ea5e9, #0284c7) !important;
+    color: white !important; border: none !important;
+    border-radius: 8px !important; font-weight: 600 !important;
 }
-.stButton>button:hover { opacity: .85; }
+:root [data-testid="baseButton-primary"]:hover { opacity: .85 !important; }
+
+button[kind="secondary"] {
+    background-color: transparent !important;
+    border: none !important;
+    color: white !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+button[kind="secondary"]:hover {
+    background-color: transparent !important;
+    border: none !important;
+}
 input, textarea {
     background: rgba(2,18,40,.6) !important;
     color: #e0f2fe !important;
@@ -155,6 +177,46 @@ div[data-baseweb="select"] span { color: #e0f2fe !important; }
 </style>""", unsafe_allow_html=True)
 
 init_db()
+
+# ── JS: strip dark box from secondary buttons after every Streamlit render ────
+# CSS can't reliably override Streamlit's emotion-cache styles; inline styles can.
+components.html("""
+<script>
+(function () {
+    function fix() {
+        const doc = window.parent.document;
+        doc.querySelectorAll('[data-testid="baseButton-secondary"]').forEach(btn => {
+            ['background','background-color','border','box-shadow','outline'].forEach(p =>
+                btn.style.setProperty(p, 'transparent' === p || p==='background-color' ? 'transparent'
+                    : p==='border'||p==='box-shadow'||p==='outline' ? 'none' : 'transparent', 'important'));
+            btn.style.setProperty('background',       'transparent', 'important');
+            btn.style.setProperty('background-color', 'transparent', 'important');
+            btn.style.setProperty('border',           'none',        'important');
+            btn.style.setProperty('box-shadow',       'none',        'important');
+            btn.style.setProperty('outline',          'none',        'important');
+            btn.style.setProperty('padding',          '2px 4px',     'important');
+            btn.querySelectorAll('div').forEach(d => {
+                d.style.setProperty('background',       'transparent', 'important');
+                d.style.setProperty('background-color', 'transparent', 'important');
+                d.style.setProperty('border',           'none',        'important');
+                d.style.setProperty('box-shadow',       'none',        'important');
+                d.style.setProperty('border-radius',    '0',           'important');
+            });
+            const p = btn.querySelector('p');
+            if (p) {
+                p.style.setProperty('filter',    'grayscale(1) brightness(10)', 'important');
+                p.style.setProperty('color',     'white',  'important');
+                p.style.setProperty('margin',    '0',      'important');
+                p.style.setProperty('font-size', '1.1rem', 'important');
+            }
+        });
+    }
+    fix();
+    new MutationObserver(fix).observe(window.parent.document.body,
+        { childList: true, subtree: true });
+})();
+</script>
+""", height=0, scrolling=False)
 
 # ── Header ────────────────────────────────────────────────────────────────────
 
@@ -238,11 +300,10 @@ with tab_log:
             cols[4].markdown(f'<div class="dive-row">{row["animals"] or "—"}</div>', unsafe_allow_html=True)
 
             with cols[5]:
-                if st.button("✏️", key=f"edit_btn_{dive_id}", help="Edit this dive"):
+                if st.button("✎", key=f"edit_btn_{dive_id}", help="Edit this dive"):
                     if is_editing:
                         st.session_state["editing_dive_id"] = None
                     else:
-                        # Clear stale searchbox state for previous dive
                         prev = st.session_state["editing_dive_id"]
                         if prev and f"edit_sb_{prev}" in st.session_state:
                             del st.session_state[f"edit_sb_{prev}"]
@@ -250,7 +311,7 @@ with tab_log:
                     st.rerun()
 
             with cols[6]:
-                if st.button("🗑️", key=f"del_btn_{dive_id}", help="Delete this dive"):
+                if st.button("✕", key=f"del_btn_{dive_id}", help="Delete this dive"):
                     delete_dive(dive_id)
                     if st.session_state["editing_dive_id"] == dive_id:
                         st.session_state["editing_dive_id"] = None
@@ -292,7 +353,7 @@ with tab_log:
 
                 sv_col, cx_col = st.columns(2)
                 with sv_col:
-                    if st.button("💾 Save Changes", key=f"save_{dive_id}", use_container_width=True):
+                    if st.button("💾 Save Changes", key=f"save_{dive_id}", use_container_width=True, type="primary"):
                         if edit_loc:
                             loc_name, lat, lon = edit_loc
                         else:
@@ -339,7 +400,7 @@ with tab_add:
     log_notes = st.text_area("Notes", placeholder="Visibility, water temp, conditions…",
                                height=90, key="log_notes")
 
-    if st.button("🤿 Log This Dive", use_container_width=True, key="log_submit"):
+    if st.button("🤿 Log This Dive", use_container_width=True, key="log_submit", type="primary"):
         if not log_loc:
             st.error("Please type and select a location from the dropdown first.")
         else:
