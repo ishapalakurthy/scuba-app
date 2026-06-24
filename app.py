@@ -1,3 +1,7 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 import streamlit as st
 import streamlit.components.v1 as components
 import sqlite3
@@ -8,6 +12,8 @@ from streamlit_searchbox import st_searchbox
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 from datetime import date, datetime
+
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 DB_PATH = "dives.db"
 
